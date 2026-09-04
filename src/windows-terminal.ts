@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, copyFileSync, mkdirSync } from 'node:fs';
 import { homedir, platform } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import {
   type TerminalScheme,
   type TerminalTheme,
@@ -8,6 +8,7 @@ import {
   SAKURA_PINK_TERMINAL_THEME,
   POWER_CLAUDE_GUID,
   createPowerClaudeProfile,
+  getPowerClaudeBackground,
 } from './theme.js';
 
 // ── 路径 ──
@@ -96,8 +97,21 @@ export function installPowerClaude(): TerminalSettings {
   const config = readSettings();
   const claudeExe = findClaudeExe();
 
-  // 创建 PowerClaude profile
-  const profile = createPowerClaudeProfile(claudeExe);
+  // 背景图：把 public/ 里的图片拷到固定位置，再作为背景写入
+  const bg = getPowerClaudeBackground();
+  if (bg) {
+    try {
+      const dest = bg.dest;
+      if (!existsSync(dirname(dest))) mkdirSync(dirname(dest), { recursive: true });
+      copyFileSync(bg.source, dest);
+    } catch (e) {
+      // 图片拷贝失败不应阻断整个安装
+      console.warn(`背景图拷贝失败，已跳过背景: ${String(e)}`);
+    }
+  }
+
+  // 创建 PowerClaude profile（传入背景图绝对路径）
+  const profile = createPowerClaudeProfile(claudeExe, bg ? bg.dest : null);
 
   // 清理所有已有同名 GUID 的 profile（避免重复），再添加新的
   // 注意：GUID 比较必须忽略大小写（Windows Terminal 可能写入小写）

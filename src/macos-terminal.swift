@@ -1,18 +1,20 @@
 #!/usr/bin/env swift
 // macos-terminal.swift — Sakura Pink profile generator for macOS Terminal.app
-// Usage: swift macos-terminal.swift <output-path> <claude-path>
+// Usage: swift macos-terminal.swift <output-path> <claude-path> [background-image-path]
 // Generates a binary plist (.terminal) file importable by Terminal.app
+// background-image-path is optional; when omitted, no background image keys are written
 
 import Foundation
 import AppKit
 
 guard CommandLine.arguments.count > 2 else {
-    fputs("Usage: swift macos-terminal.swift <output-path> <claude-path>\n", stderr)
+    fputs("Usage: swift macos-terminal.swift <output-path> <claude-path> [background-image-path]\n", stderr)
     exit(1)
 }
 
 let outputPath = CommandLine.arguments[1]
 let claudePath = CommandLine.arguments[2]
+let backgroundImagePath = CommandLine.arguments.count > 3 ? CommandLine.arguments[3] : nil
 
 // MARK: - Color palette (matches theme.ts SAKURA_PINK_SCHEME)
 
@@ -82,6 +84,13 @@ var p: [String: Any] = [
     "rowCount": 36,
     "BackgroundAlphaInactive": 0.92,
 ]
+
+// 背景图（可选）：仅在提供路径时写入，避免破坏无背景配置
+if let backgroundImagePath {
+    p["BackgroundImageFilename"] = backgroundImagePath
+    // 不透明度：这里有意不写 BackgroundImageOcclusion（透明度键名/取值存疑）
+    // 避免武断破坏配置；要渐变效果可后续在真机验证后补充
+}
 
 // ANSI 16 colors
 let keys = [

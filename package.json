@@ -2,7 +2,7 @@
   "name": "power-claude",
   "private": true,
   "version": "0.1.0",
-  "description": "PowerClaude — Windows Terminal + Claude Code 一键美化配置方案",
+  "description": "PowerClaude — Terminal + Claude Code 一键美化配置方案",
   "type": "module",
   "scripts": {
     "apply": "tsx src/index.ts",

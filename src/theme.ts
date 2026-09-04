@@ -1,5 +1,9 @@
 export const POWER_CLAUDE_GUID = '{BCC127B2-DCA0-4287-BA8A-0BEF9AA9015D}';
 
+import { existsSync, readdirSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { extname, join } from 'node:path';
+
 // ── Windows Terminal 配色方案 ──
 export interface TerminalScheme {
   name: string;
@@ -130,10 +134,17 @@ export interface PowerClaudeProfile {
   hidden: boolean;
   startingDirectory: string;
   colorScheme?: string;
+  // 背景图（Windows Terminal 支持；留空则整块不写入）
+  backgroundImage?: string;
+  backgroundImageOpacity?: number;
+  backgroundImageStretchMode?: string;
 }
 
-export function createPowerClaudeProfile(iconPath: string | null): PowerClaudeProfile {
-  return {
+export function createPowerClaudeProfile(
+  iconPath: string | null,
+  backgroundImage?: string | null,
+): PowerClaudeProfile {
+  const profile: PowerClaudeProfile = {
     guid: POWER_CLAUDE_GUID,
     name: 'PowerClaude',
     commandline: 'powershell.exe -NoLogo -NoExit -Command "claude"',
@@ -141,4 +152,50 @@ export function createPowerClaudeProfile(iconPath: string | null): PowerClaudePr
     hidden: false,
     startingDirectory: process.env.USERPROFILE || process.env.HOME || '~',
   };
+  // 有背景图才写背景字段；没有则保持原样（避免写入空路径破坏配置）
+  if (backgroundImage) {
+    profile.backgroundImage = backgroundImage;
+    profile.backgroundImageOpacity = 0.18;
+    profile.backgroundImageStretchMode = 'uniformToFill';
+  }
+  return profile;
+}
+
+// ── 背景图 ──
+// 支持的图片扩展名（Windows Terminal 可显示）：
+const SUPPORTED_IMAGE_EXTS = ['.webp', '.png', '.jpg', '.jpeg', '.bmp', '.gif', '.svg'];
+
+// 在 public/ 里找第一张图片作为背景；
+// public/ 优先（换图立即生效），没有才复用 ~/.claude 旧缓存。
+// homeDir/publicDir 可注入（默认取真实环境），便于测试与复用。
+export function getPowerClaudeBackground(
+  homeDir = homedir(),
+  publicDir = join(process.cwd(), 'public'),
+): { source: string; dest: string } | null {
+  // 1) 仓库 public/ 目录：取第一个图片文件（按文件名序，稳定可预期）
+  if (existsSync(publicDir)) {
+    try {
+      const firstImage = readdirSync(publicDir)
+        .filter(f => SUPPORTED_IMAGE_EXTS.includes(extname(f).toLowerCase()))
+        .sort()
+        .map(f => join(publicDir, f))[0];
+      if (firstImage) {
+        // 落点保留源文件扩展名，避免「内容与扩展名不符」识别不稳
+        return {
+          source: firstImage,
+          dest: join(homeDir, '.claude', `powerclaude-background${extname(firstImage).toLowerCase()}`),
+        };
+      }
+    } catch {
+      // 读取 public/ 失败时不阻塞安装
+    }
+  }
+
+  // 2) 兜底：复用已拷贝的落点（扩展名跟随源文件，逐个检查）
+  for (const ext of SUPPORTED_IMAGE_EXTS) {
+    const installed = join(homeDir, '.claude', `powerclaude-background${ext}`);
+    if (existsSync(installed)) return { source: installed, dest: installed };
+  }
+
+  return null;
 }

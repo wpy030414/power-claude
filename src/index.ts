@@ -17,6 +17,7 @@ import {
   isPowerClaudeInstalledMacOS,
 } from './macos-terminal.js';
 import { applyClaudeTheme, isClaudeThemeApplied } from './claude-settings.js';
+import { getPowerClaudeBackground } from './theme.js';
 
 // ── CLI 参数 ──
 const { values } = parseArgs({
@@ -176,6 +177,12 @@ async function main() {
   const termName = IS_MACOS ? 'Terminal.app' : 'Windows Terminal';
   if (installTerminal) summary.push(`  🌸 ${termName}: Sakura Pink`);
   if (installClaude) summary.push('  🎨 Claude Code: Sakura Pink（基于 light）');
+  if (installTerminal && IS_WINDOWS && getPowerClaudeBackground() !== null) {
+    summary.push('  🖼️ Windows Terminal 背景图: 已启用');
+  }
+  if (installTerminal && IS_MACOS && getPowerClaudeBackground() !== null) {
+    summary.push('  🖼️ Terminal.app 背景图: 已启用');
+  }
   if (summary.length > 0) {
     log.info(summary.join('\n'));
   }

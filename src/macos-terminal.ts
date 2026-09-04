@@ -1,8 +1,9 @@
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, copyFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { getPowerClaudeBackground } from './theme.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SWIFT_SCRIPT = join(__dirname, 'macos-terminal.swift');
@@ -98,8 +99,25 @@ export function installPowerClaudeMacOS(): void {
     mkdirSync(tempDir, { recursive: true });
   }
 
-  // 运行 Swift 脚本生成 .terminal 配置文件（传入 claude 绝对路径）
-  execSync(`swift "${SWIFT_SCRIPT}" "${tempPath}" "${claudePath}"`, {
+  // 背景图：与 Windows 共用同一套查找（public/ 第一张图，public/ 优先，扩展名跟随）
+  let bgPath: string | null = null;
+  const bg = getPowerClaudeBackground();
+  if (bg) {
+    try {
+      // 拷贝到固定落点，避免直接引用 public/ 里随时可能挪动的路径
+      const dest = bg.dest;
+      if (!existsSync(dirname(dest))) mkdirSync(dirname(dest), { recursive: true });
+      copyFileSync(bg.source, dest);
+      bgPath = dest;
+    } catch (e) {
+      console.warn(`背景图拷贝失败，已跳过背景: ${String(e)}`);
+    }
+  }
+
+  // 运行 Swift 脚本生成 .terminal 配置文件（传入 claude 绝对路径 + 可选背景图路径）
+  let cmd = `swift "${SWIFT_SCRIPT}" "${tempPath}" "${claudePath}"`;
+  if (bgPath) cmd += ` "${bgPath}"`;
+  execSync(cmd, {
     stdio: ['ignore', 'pipe', 'pipe'],
     timeout: 30_000,
   });
