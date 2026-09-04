@@ -17,7 +17,10 @@
 
 ## 输入 / 输出
 
-- 输入：`%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json`
+- 输入：Windows Terminal `settings.json`，按候选优先级定位（ADR-010）：
+  1. `%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\`（商店稳定版）
+  2. `%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\`（商店 Preview 版）
+  3. `%LOCALAPPDATA%\Microsoft\Windows Terminal\`（免安装版）
 - 输出：同文件（4 空格缩进 JSON + 尾换行）
 
 ## 约束
@@ -29,7 +32,8 @@
 
 ## 边界条件
 
-- settings.json 不存在：明确报错提示先安装 Windows Terminal
+- settings.json 不存在（未安装或从未启动）：明确报错并列出全部已查找位置，提示先安装或先启动一次；备份失败即停 spinner、exit 1，进程不得挂死
+- 多版本共存：写入先命中的候选（stable 优先于 Preview）
 - 背景图拷贝失败：警告并跳过背景，不阻断安装
 - JSON 解析失败：交由上层报错，不静默重建配置
 
@@ -38,6 +42,8 @@
 - [x] 连续运行两次核心安装，profiles.list 中只有一个 PowerClaude GUID
 - [x] 重复主题应用不产生重复 scheme / theme 条目
 - [x] 用户已有 profile 在安装前后保持不变
+- [x] 仅 Preview 版的机器全链路写入 Preview 路径（E2E 回归）
+- [x] 无任何配置时 exit 1 + 明确报错，进程不挂死（E2E 回归）
 
 ## 完成定义
 

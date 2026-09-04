@@ -26,7 +26,12 @@ const require = createRequire(import.meta.url);
 const TSX_CLI = join(dirname(require.resolve('tsx/package.json')), 'dist', 'cli.mjs');
 const ENTRY = join(REPO_ROOT, 'src', 'index.ts');
 
-const WT_SETTINGS_DIR = join('Packages', 'Microsoft.WindowsTerminal_8wekyb3d8bbwe', 'LocalState');
+type WtVariant = 'stable' | 'preview' | 'unpackaged';
+const WT_SETTINGS_DIRS: Record<WtVariant, string> = {
+  stable: join('Packages', 'Microsoft.WindowsTerminal_8wekyb3d8bbwe', 'LocalState'),
+  preview: join('Packages', 'Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe', 'LocalState'),
+  unpackaged: join('Microsoft', 'Windows Terminal'),
+};
 const USER_PROFILE = {
   guid: '{11111111-2222-3333-4444-555555555555}',
   name: 'PowerShell',
@@ -60,8 +65,8 @@ function makeSandbox(t: TestContext): Sandbox {
 }
 
 /** 放一份最小可用的 Windows Terminal settings.json fixture */
-function installTerminalFixture(sb: Sandbox): void {
-  const dir = join(sb.localAppData, WT_SETTINGS_DIR);
+function installTerminalFixture(sb: Sandbox, variant: WtVariant = 'stable'): void {
+  const dir = join(sb.localAppData, WT_SETTINGS_DIRS[variant]);
   mkdirSync(dir, { recursive: true });
   writeFileSync(
     join(dir, 'settings.json'),
@@ -146,8 +151,8 @@ interface WrittenSettings {
   profiles: { defaults: Record<string, unknown>; list: Array<Record<string, unknown>> };
 }
 
-function readWrittenSettings(sb: Sandbox): WrittenSettings {
-  return JSON.parse(readFileSync(join(sb.localAppData, WT_SETTINGS_DIR, 'settings.json'), 'utf-8')) as WrittenSettings;
+function readWrittenSettings(sb: Sandbox, variant: WtVariant = 'stable'): WrittenSettings {
+  return JSON.parse(readFileSync(join(sb.localAppData, WT_SETTINGS_DIRS[variant], 'settings.json'), 'utf-8')) as WrittenSettings;
 }
 
 function powerClaudeProfiles(settings: WrittenSettings): Array<Record<string, unknown>> {
@@ -156,8 +161,8 @@ function powerClaudeProfiles(settings: WrittenSettings): Array<Record<string, un
   );
 }
 
-function backupFiles(sb: Sandbox): string[] {
-  return readdirSync(join(sb.localAppData, WT_SETTINGS_DIR)).filter(f => f.includes('.bak-'));
+function backupFiles(sb: Sandbox, variant: WtVariant = 'stable'): string[] {
+  return readdirSync(join(sb.localAppData, WT_SETTINGS_DIRS[variant])).filter(f => f.includes('.bak-'));
 }
 
 // Windows 专属链路：其他平台跑不出 LOCALAPPDATA 语义，整体跳过
@@ -309,4 +314,50 @@ test('背景图：public/ 有图时缓存到 ~/.claude 并写入 profile 背景�
   assert.equal(pcs[0]?.backgroundImage, dest);
   assert.equal(pcs[0]?.backgroundImageOpacity, 0.18);
   assert.equal(pcs[0]?.backgroundImageStretchMode, 'uniformToFill');
+});
+
+// ── 回归：2026-09-05 真机事故（Preview 版路径不存在 → 备份 ENOENT → spinner 挂死）──
+
+test('回归：无任何 Windows Terminal 配置时明确报错退出，不挂死', winOnly, async t => {
+  const sb = makeSandbox(t);
+  stubNativeInstall(sb);
+  // 故意不放任何 settings.json fixture
+
+  // 进程若能正常退出即证明未挂死（挂死会触发 runCli 的 60s 超时使测试失败）
+  const { code, output } = await runCli(sb, 'y\n');
+
+  assert.equal(code, 1);
+  assert.ok(output.includes('备份失败'), '应明确标记备份步骤失败');
+  assert.ok(output.includes('未找到 Windows Terminal 配置文件'), '应给出明确原因');
+  assert.ok(output.includes('Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe'), '报错应列出已查找的位置');
+  assert.ok(output.includes('Microsoft\\Windows Terminal'), '免安装版路径也应在查找列表中');
+});
+
+test('回归：仅安装 Preview 版时，全链路写入 Preview 包路径', winOnly, async t => {
+  const sb = makeSandbox(t);
+  installTerminalFixture(sb, 'preview');
+  stubNativeInstall(sb);
+
+  const { code, output } = await runCli(sb, 'y\n');
+
+  assert.equal(code, 0, `输出：\n${output}`);
+  const settings = readWrittenSettings(sb, 'preview');
+  assert.equal(settings.defaultProfile, POWER_CLAUDE_GUID);
+  assert.equal(powerClaudeProfiles(settings).length, 1);
+  assert.equal(backupFiles(sb, 'preview').length, 1, '备份应落在 Preview 配置同目录');
+});
+
+test('回归：stable 与 Preview 双装时只写 stable，Preview 配置不动', winOnly, async t => {
+  const sb = makeSandbox(t);
+  installTerminalFixture(sb, 'stable');
+  installTerminalFixture(sb, 'preview');
+  stubNativeInstall(sb);
+
+  const { code, output } = await runCli(sb, 'y\n');
+
+  assert.equal(code, 0, `输出：\n${output}`);
+  assert.equal(readWrittenSettings(sb, 'stable').defaultProfile, POWER_CLAUDE_GUID);
+  const preview = readWrittenSettings(sb, 'preview');
+  assert.equal(preview.defaultProfile, undefined, 'Preview 配置不应被改写');
+  assert.equal(powerClaudeProfiles(preview).length, 0);
 });

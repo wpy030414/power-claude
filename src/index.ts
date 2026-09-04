@@ -90,11 +90,17 @@ async function main() {
       log.info('PowerClaude 已安装，将更新配置。');
     }
 
-    // ── 备份（一律备份，不询问）──
+    // ── 备份（一律备份，不询问；失败即停，不允许挂死）──
     const s1 = spinner();
     s1.start('备份中...');
-    const backupPath = backupWindowsTerminal();
-    s1.stop(`已备份至: ${backupPath}`);
+    try {
+      const backupPath = backupWindowsTerminal();
+      s1.stop(`已备份至: ${backupPath}`);
+    } catch (e) {
+      s1.stop('备份失败 ❌');
+      log.error(String(e));
+      process.exit(1);
+    }
 
     // ── 安装核心配置 ──
     const s2 = spinner();
