@@ -28,15 +28,15 @@ func hex(_ s: String) -> RGB {
 }
 
 let bg     = hex("#FFF0F5")
-let fg     = hex("#8B2252")
-let cursor = hex("#C07080")
-let sel    = hex("#F0C8D8")
+let fg     = hex("#A63A6E")
+let cursor = hex("#E86A92")
+let sel    = hex("#FFB8CC")
 
 let ansi: [RGB] = [
-    hex("#5A3A4A"), hex("#C07080"), hex("#6B8E6B"), hex("#B8865A"),
-    hex("#6A7FA8"), hex("#A8658A"), hex("#5A8A8A"), hex("#8B5A6A"),
-    hex("#8B7A80"), hex("#C07080"), hex("#80A080"), hex("#D4A060"),
-    hex("#8090C0"), hex("#C080A0"), hex("#70A0A0"), hex("#D4A8B8"),
+    hex("#4A3640"), hex("#FF6B8A"), hex("#5FB77E"), hex("#F0A65E"),
+    hex("#6FA9E6"), hex("#CC5BA8"), hex("#4FB0C0"), hex("#995E78"),
+    hex("#8A7280"), hex("#FF85A0"), hex("#7CCB98"), hex("#F8BE7A"),
+    hex("#8DBEF0"), hex("#DE74BE"), hex("#66C8D6"), hex("#E4B4C8"),
 ]
 
 // MARK: - Font (system monospace 13pt)

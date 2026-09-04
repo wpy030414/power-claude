@@ -25,7 +25,7 @@ pnpm run apply
 ```
 🌸 PowerClaude 安装向导
 
-  ◆ 是否备份当前的 Windows Terminal 配置？ → Yes
+  ◆ 备份中...（自动备份，无需确认）
   ◆ 安装 PowerClaude 核心配置...
   ◆ 是否应用 Sakura Pink 樱花粉主题？ → Yes
   ◆ 应用 Windows Terminal 主题...
@@ -45,7 +45,7 @@ pnpm run apply
 │  ❯ claude                                           │
 │  Welcome to Claude Code 🎀                          │
 │                                                     │
-│  (一整个粉色的终端，连光标都是亮粉的 #C94060)       │
+│  (一整个粉色的终端，连光标都是亮粉的 #E86A92)       │
 │                                                     │
 │  Ctrl+Tab 切换标签（最近使用优先）                    │
 │  Mica 磨砂玻璃透出桌面光影                           │
@@ -70,21 +70,22 @@ pnpm run apply
 | 用途 | 色号 | 名称 |
 |---|---|---|
 | 🖼️ 背景 | `#FFF0F5` | Lavender Blush |
-| 📝 前景文字 | `#8B2252` | Dark Pink |
-| 📌 光标/强调色 | `#C07080` | Muted Rose |
-| 🎯 选中 | `#F0C8D8` | Cotton Candy |
-| 📋 标签行 | `#FFE4EC` | Misty Rose |
+| 📝 前景文字 | `#A63A6E` | 深玫瑰粉 |
+| 📌 光标/强调色 | `#E86A92` | 珊瑚粉 |
+| 🎯 选中 | `#FFB8CC` | 亮粉色 |
+| 📋 标签行 | `#FFDCE8` | 蜜桃粉 |
 
 ### Claude Code 自定义主题
 
-基于 `light` 明亮预设，只覆盖 13 个颜色令牌：
+基于 `light-daltonized` 明亮预设，只覆盖需要的粉色令牌：
 
 | 令牌 | 色号 | 用途 |
 |---|---|---|
-| `accentColor` | `#C07080` | 高亮/选中（柔和尘粉） |
-| `dangerColor` | `#B08090` | 危险/权限提示（不刺眼） |
-| `warningColor` | `#D4A060` | 警告 |
-| `infoColor` | `#8090C0` | 信息 |
+| `claude` | `#FF6B8A` | 高亮/选中（亮樱桃粉） |
+| `error` | `#E05A7A` | 危险/权限提示（亮玫瑰红） |
+| `warning` | `#F0A65E` | 警告（蜜橙） |
+| `suggestion` | `#6FA9E6` | 信息/建议（天蓝） |
+| `success` | `#5FB77E` | 成功（薄荷绿） |
 | `background` | `#FFF0F5` | 背景 |
 
 ## 恢复默认
