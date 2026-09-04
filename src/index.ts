@@ -21,7 +21,6 @@ import { applyClaudeTheme, isClaudeThemeApplied } from './claude-settings.js';
 // ── CLI 参数 ──
 const { values } = parseArgs({
   options: {
-    yes: { type: 'boolean', short: 'y', default: false },
     help: { type: 'boolean', short: 'h', default: false },
   },
   strict: false,
@@ -33,17 +32,12 @@ ${pc.bold('PowerClaude 安装向导')}
 
 ${pc.dim('用法:')}
   pnpm run apply         交互式安装
-  pnpm run apply -- -y   非交互式，默认全部安装
-  pnpm run apply -- --yes
 
 ${pc.dim('选项:')}
-  -y, --yes  跳过所有交互，默认全部安装
   -h, --help  显示帮助
 `);
   process.exit(0);
 }
-
-const YES = values.yes;
 
 // ── 检测平台 ──
 const IS_WINDOWS = platform() === 'win32';
@@ -83,42 +77,28 @@ async function main() {
 
   // ── 备份 ──
   if (IS_WINDOWS) {
-    if (YES) {
+    const shouldBackup = await confirm({
+      message: '是否备份当前的 Windows Terminal 配置？',
+      initialValue: true,
+    });
+    if (isCancel(shouldBackup)) process.exit(0);
+    if (shouldBackup) {
       const s = spinner();
       s.start('备份中...');
       const backupPath = backupSettings();
       s.stop(`已备份至: ${backupPath}`);
-    } else {
-      const shouldBackup = await confirm({
-        message: '是否备份当前的 Windows Terminal 配置？',
-        initialValue: true,
-      });
-      if (isCancel(shouldBackup)) process.exit(0);
-      if (shouldBackup) {
-        const s = spinner();
-        s.start('备份中...');
-        const backupPath = backupSettings();
-        s.stop(`已备份至: ${backupPath}`);
-      }
     }
   } else if (IS_MACOS) {
-    if (YES) {
+    const shouldBackup = await confirm({
+      message: '是否备份当前的 Terminal.app 偏好设置？',
+      initialValue: true,
+    });
+    if (isCancel(shouldBackup)) process.exit(0);
+    if (shouldBackup) {
       const s = spinner();
       s.start('备份 Terminal.app 偏好设置...');
       const info = backupMacOSTerminal();
       s.stop(`已备份至: ${info.path}`);
-    } else {
-      const shouldBackup = await confirm({
-        message: '是否备份当前的 Terminal.app 偏好设置？',
-        initialValue: true,
-      });
-      if (isCancel(shouldBackup)) process.exit(0);
-      if (shouldBackup) {
-        const s = spinner();
-        s.start('备份 Terminal.app 偏好设置...');
-        const info = backupMacOSTerminal();
-        s.stop(`已备份至: ${info.path}`);
-      }
     }
   }
 
@@ -151,34 +131,29 @@ async function main() {
   let installTerminal = false;
   let installClaude = false;
 
-  if (YES) {
-    installTerminal = IS_WINDOWS || IS_MACOS;
-    installClaude = true;
-  } else {
-    const applyTheme = await confirm({
-      message: '是否应用 Sakura Pink 樱花粉主题？',
-      initialValue: true,
+  const applyTheme = await confirm({
+    message: '是否应用 Sakura Pink 樱花粉主题？',
+    initialValue: true,
+  });
+  if (isCancel(applyTheme)) process.exit(0);
+
+  if (applyTheme) {
+    const terminalLabel = IS_MACOS ? 'Terminal.app' : 'Windows Terminal';
+    const scope = await select({
+      message: '选择应用范围',
+      options: [
+        { value: 'both', label: '全部应用', hint: `${terminalLabel} + Claude Code` },
+        ...(IS_WINDOWS || IS_MACOS
+          ? [{ value: 'terminal', label: `仅 ${terminalLabel}`, hint: '主题 + 配色 + 窗口' }]
+          : []),
+        { value: 'claude', label: '仅 Claude Code', hint: '基于 light 的自定义主题' },
+      ],
+      initialValue: 'both',
     });
-    if (isCancel(applyTheme)) process.exit(0);
+    if (isCancel(scope)) process.exit(0);
 
-    if (applyTheme) {
-      const terminalLabel = IS_MACOS ? 'Terminal.app' : 'Windows Terminal';
-      const scope = await select({
-        message: '选择应用范围',
-        options: [
-          { value: 'both', label: '全部应用', hint: `${terminalLabel} + Claude Code` },
-          ...(IS_WINDOWS || IS_MACOS
-            ? [{ value: 'terminal', label: `仅 ${terminalLabel}`, hint: '主题 + 配色 + 窗口' }]
-            : []),
-          { value: 'claude', label: '仅 Claude Code', hint: '基于 light 的自定义主题' },
-        ],
-        initialValue: 'both',
-      });
-      if (isCancel(scope)) process.exit(0);
-
-      if (scope === 'both' || scope === 'terminal') installTerminal = true;
-      if (scope === 'both' || scope === 'claude') installClaude = true;
-    }
+    if (scope === 'both' || scope === 'terminal') installTerminal = true;
+    if (scope === 'both' || scope === 'claude') installClaude = true;
   }
 
   // ── 执行安装 ──

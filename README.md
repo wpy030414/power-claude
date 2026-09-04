@@ -16,11 +16,8 @@
 # 1. 安装依赖
 pnpm install
 
-# 2. 交互式安装（推荐）
+# 2. 交互式安装
 pnpm run apply
-
-# 3. 全自动安装（跳过所有交互，默认全部应用）
-pnpm run apply:yes
 ```
 
 ## 交互式向导
