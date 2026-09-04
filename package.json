@@ -1,0 +1,22 @@
+{
+  "name": "power-claude",
+  "private": true,
+  "version": "0.1.0",
+  "description": "PowerClaude — Windows Terminal + Claude Code 一键美化配置方案",
+  "type": "module",
+  "scripts": {
+    "apply": "tsx src/index.ts",
+    "apply:yes": "tsx src/index.ts --yes",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.10.1",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
