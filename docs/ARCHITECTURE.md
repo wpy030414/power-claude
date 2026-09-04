@@ -67,14 +67,14 @@ tests/ ── node:test：tests/unit（领域纯逻辑）+ tests/e2e（子进程
 
 ## 外部系统
 
-- Windows Terminal：读写 `%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json`
+- Windows Terminal：读写 `%LOCALAPPDATA%` 下的 `settings.json`，按候选优先级定位（商店稳定版 → 商店 Preview 版 → 免安装版，ADR-010）
 - macOS Terminal.app：直写 `~/Library/Preferences/com.apple.Terminal.plist`，依赖 `cfprefsd` 缓存刷新与冷启动加载
 - Claude Code CLI：`~/.claude/settings.json` + `~/.claude/themes/` 目录约定（`custom:` 前缀引用）；Windows 下通过重启 daemon 生效
 - Swift 运行时 / AppKit：macOS 图像合成与 plist 序列化
 
 ## 重要技术边界
 
-- Windows Terminal 配置路径按商店版包路径解析；非 Windows 调用直接抛错
+- Windows Terminal 配置路径按候选优先级解析（稳定版 → Preview → 免安装版），全部缺失时明确报错且进程不得挂死；非 Windows 调用直接抛错（ADR-010）
 - CLI 探测优先级：候选路径（native `~/.local/bin` → npm shim/exe）→ PATHEXT 感知 PATH 扫描；探测不启动 claude 进程（ADR-008）
 - macOS 直写 plist 的硬前提：Terminal.app 必须已退出（否则其内存里的旧 profile 会回写覆盖），因此安装流程会主动退出并冷启动 Terminal
 - Swift 脚本冷编译可达 60–90s，调用超时设 120s

@@ -1,6 +1,7 @@
 // 领域：Windows Terminal settings.json 的纯变换
 // 只操作传入的 settings 对象（原地修改并返回），不做任何文件 IO。
 // 行为与历史实现保持一致：GUID 比较忽略大小写、按名去重、不删用户已有配置。
+import { win32 } from 'node:path';
 import {
   type TerminalScheme,
   type TerminalTheme,
@@ -29,6 +30,28 @@ export interface TerminalSettings {
   themes?: TerminalTheme[];
   tabSwitcherMode?: string;
   [key: string]: unknown;
+}
+
+// ── 配置文件定位（多版本，纯逻辑）──
+// 候选优先级：商店稳定版 → 商店 Preview 版 → 免安装（unpackaged）版；多版本共存时取先命中者。
+// 固定使用 win32 语义拼接（该配置只存在于 Windows），与宿主运行平台无关。
+export function windowsTerminalSettingsCandidates(localAppData: string): string[] {
+  return [
+    win32.join(localAppData, 'Packages', 'Microsoft.WindowsTerminal_8wekyb3d8bbwe', 'LocalState', 'settings.json'),
+    win32.join(localAppData, 'Packages', 'Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe', 'LocalState', 'settings.json'),
+    win32.join(localAppData, 'Microsoft', 'Windows Terminal', 'settings.json'),
+  ];
+}
+
+/** 返回第一个实际存在的候选路径；全部缺失返回 null（由上层给出明确报错） */
+export function resolveWindowsTerminalSettingsPath(
+  localAppData: string,
+  exists: (path: string) => boolean,
+): string | null {
+  for (const candidate of windowsTerminalSettingsCandidates(localAppData)) {
+    if (exists(candidate)) return candidate;
+  }
+  return null;
 }
 
 // ── 安装 PowerClaude profile（原地变换）──
