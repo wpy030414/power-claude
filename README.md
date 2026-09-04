@@ -28,10 +28,8 @@ pnpm run apply
   ◆ 是否备份当前的 Windows Terminal 配置？ → Yes
   ◆ 安装 PowerClaude 核心配置...
   ◆ 是否应用 Sakura Pink 樱花粉主题？ → Yes
-  ◆ 选择应用范围：
-     ● 全部应用（Windows Terminal + Claude Code）
-     ○ 仅 Windows Terminal
-     ○ 仅 Claude Code
+  ◆ 应用 Windows Terminal 主题...
+  ◆ 应用 Claude Code 主题...
 
 ✨ PowerClaude 安装完成！
 ```
@@ -61,7 +59,7 @@ pnpm run apply
 | 🚀 **PowerClaude 终端** | PowerShell 启动后自动运行 `claude` |
 | 🎯 **默认启动** | 安装后自动设为默认终端 |
 | 🔀 **Tab 切换器** | `Ctrl+Tab` 弹出标签列表，最近使用优先 |
-| 🌸 **Sakura Pink 主题** | 交互式选择安装范围：Windows Terminal / Claude Code / 全部 |
+| 🌸 **Sakura Pink 主题** | 应用主题时终端 + Claude Code 一起应用 |
 | 💾 **自动备份** | 安装前自动备份 `settings.json` |
 | 📌 **新标签菜单** | PowerClaude 置顶，一键直达 |
 

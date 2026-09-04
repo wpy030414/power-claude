@@ -1,4 +1,4 @@
-import { intro, outro, confirm, select, log, spinner, isCancel } from '@clack/prompts';
+import { intro, outro, confirm, log, spinner, isCancel } from '@clack/prompts';
 import pc from 'picocolors';
 import { platform } from 'node:os';
 import { parseArgs } from 'node:util';
@@ -128,33 +128,15 @@ async function main() {
   }
 
   // ── 询问主题安装 ──
-  let installTerminal = false;
-  let installClaude = false;
-
+  // 只要应用主题，可装终端的平台必须终端 + Claude Code 一起装，否则没有意义。
   const applyTheme = await confirm({
     message: '是否应用 Sakura Pink 樱花粉主题？',
     initialValue: true,
   });
   if (isCancel(applyTheme)) process.exit(0);
 
-  if (applyTheme) {
-    const terminalLabel = IS_MACOS ? 'Terminal.app' : 'Windows Terminal';
-    const scope = await select({
-      message: '选择应用范围',
-      options: [
-        { value: 'both', label: '全部应用', hint: `${terminalLabel} + Claude Code` },
-        ...(IS_WINDOWS || IS_MACOS
-          ? [{ value: 'terminal', label: `仅 ${terminalLabel}`, hint: '主题 + 配色 + 窗口' }]
-          : []),
-        { value: 'claude', label: '仅 Claude Code', hint: '基于 light 的自定义主题' },
-      ],
-      initialValue: 'both',
-    });
-    if (isCancel(scope)) process.exit(0);
-
-    if (scope === 'both' || scope === 'terminal') installTerminal = true;
-    if (scope === 'both' || scope === 'claude') installClaude = true;
-  }
+  const installClaude = applyTheme;
+  const installTerminal = applyTheme && (IS_WINDOWS || IS_MACOS);
 
   // ── 执行安装 ──
   if (installTerminal) {
