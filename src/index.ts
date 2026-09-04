@@ -75,31 +75,17 @@ async function main() {
     }
   }
 
-  // ── 备份 ──
+  // ── 备份（一律备份，不询问）──
   if (IS_WINDOWS) {
-    const shouldBackup = await confirm({
-      message: '是否备份当前的 Windows Terminal 配置？',
-      initialValue: true,
-    });
-    if (isCancel(shouldBackup)) process.exit(0);
-    if (shouldBackup) {
-      const s = spinner();
-      s.start('备份中...');
-      const backupPath = backupSettings();
-      s.stop(`已备份至: ${backupPath}`);
-    }
+    const s = spinner();
+    s.start('备份中...');
+    const backupPath = backupSettings();
+    s.stop(`已备份至: ${backupPath}`);
   } else if (IS_MACOS) {
-    const shouldBackup = await confirm({
-      message: '是否备份当前的 Terminal.app 偏好设置？',
-      initialValue: true,
-    });
-    if (isCancel(shouldBackup)) process.exit(0);
-    if (shouldBackup) {
-      const s = spinner();
-      s.start('备份 Terminal.app 偏好设置...');
-      const info = backupMacOSTerminal();
-      s.stop(`已备份至: ${info.path}`);
-    }
+    const s = spinner();
+    s.start('备份 Terminal.app 偏好设置...');
+    const info = backupMacOSTerminal();
+    s.stop(`已备份至: ${info.path}`);
   }
 
   // ── 安装核心配置 ──
