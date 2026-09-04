@@ -8,7 +8,11 @@
 
 - **Windows Terminal** 中新增专属终端配置，PowerShell 直接启动 [Claude Code CLI](https://github.com/anthropics/claude-code)
 - **Claude Code CLI** 自定义主题（基于 `light-daltonized` 明亮色盲，只覆盖需要变粉的颜色）
-- 交互式安装向导，**macOS 也支持 Claude Code 主题部分**
+- 交互式安装向导，**Windows / macOS 双平台**完整支持（终端 + Claude Code 一次配齐）
+
+## 为什么存在？
+
+- 背景 / 动机：终端外观、启动行为、Claude Code 主题分散在三份配置里，手工改写繁琐易错、重装系统后无法快速复原；新版 macOS Terminal.app 又不再认外部导入的明文背景图路径。本项目把这套「粉色环境」沉淀成一条命令——自动备份、幂等可重跑、双平台共用同一份 `public/` 背景图约定。
 
 ## 快速开始
 
@@ -96,10 +100,15 @@ Copy-Item "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\Lo
   "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
 ```
 
+```bash
+# macOS：从备份恢复（先退出 Terminal.app）
+defaults import com.apple.Terminal ~/com.apple.Terminal.bak-<时间戳>.plist
+```
+
 ## 前置要求
 
 - **Windows**: Windows 10/11 + [Windows Terminal](https://aka.ms/terminal-download)（推荐 1.20+）
-- **macOS**: 仅 Claude Code 主题部分
+- **macOS**: Terminal.app 全套安装 + Claude Code 主题（自动直写偏好，过程中会退出并重启 Terminal）
 - [Node.js](https://nodejs.org/) 18+
 - [pnpm](https://pnpm.io/) 9+
 - Claude Code CLI：`npm install -g @anthropic-ai/claude-code`
@@ -110,14 +119,32 @@ Copy-Item "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\Lo
 power-claude/
 ├── src/
 │   ├── index.ts               ← 交互式安装向导（入口）
+│   ├── theme.ts               ← 主题定义与类型（双平台共享）
 │   ├── windows-terminal.ts    ← Windows Terminal 配置读写
-│   ├── claude-settings.ts     ← Claude Code 主题配置
-│   └── theme.ts               ← 主题定义与类型
-├── install.ps1                ← 备用 PowerShell 脚本
+│   ├── macos-terminal.ts      ← macOS Terminal.app 安装编排
+│   ├── macos-terminal.swift   ← Swift：profile 生成 + 背景图合成 + 偏好直写
+│   └── claude-settings.ts     ← Claude Code 主题配置
+├── public/                    ← 背景图素材（gitignored，自动查找第一张）
+├── docs/                      ← 项目文档（PRD / ARCHITECTURE / DECISIONS / specs）
 ├── package.json
 ├── tsconfig.json
 └── README.md
 ```
+
+## 当前状态
+
+- 阶段：开发中（个人工具，随 Claude Code / 终端版本跟进适配）
+- 已知限制：
+  - 终端部分仅支持 Windows Terminal 与 macOS Terminal.app，不支持 iTerm2 / VS Code 等其他终端
+  - macOS 安装会主动退出并冷启动 Terminal.app（直写偏好的硬前提）
+  - Claude Code 主题 token 随上游版本变化，可能需要跟随适配
+  - 备份文件自动累积，不自动清理
+
+## 核心技术
+
+- 语言 / 运行时：TypeScript（strict + ESM），tsx 直跑，Node.js 18+
+- 平台细节：Windows Terminal `settings.json` 读写；macOS 内嵌 Swift 脚本（AppKit 合成背景图 + security-scoped bookmark + 偏好 plist 直写）
+- 关键依赖：`@clack/prompts`（交互界面）、`picocolors`（终端着色）、`tsx`、`typescript`
 
 ## 声明
 
