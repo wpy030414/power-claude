@@ -1,16 +1,19 @@
-# Spec — Windows Terminal 安装器（src/windows-terminal.ts）
+# Spec — Windows 安装链路（domain + infrastructure + application 三层）
 
 ## 要构建什么
 
-- 目标：在 Windows Terminal 中安装 / 更新 PowerClaude profile 与 Sakura Pink 主题，全部操作幂等。
+- 目标：在 Windows Terminal 中安装 / 更新 PowerClaude profile 与 Sakura Pink 主题，全部操作幂等；探测、变换、IO 三层分离（ADR-009）。
 
 ## 行为
 
-- 预期行为：
-  - 备份：`settings.json` 原地复制为 `settings.json.bak-<时间戳>`
-  - `installPowerClaude()`：读配置 → 按固定 GUID 去重（忽略大小写）→ 追加 PowerClaude profile → 设为 `defaultProfile` → `tabSwitcherMode: "mru"` → 新标签菜单置顶 → 背景图拷贝到 `~/.claude/` 后写入 profile
-  - `applyTerminalTheme()`：按名去重添加 scheme 与 theme；`profiles.defaults.colorScheme` 与全局 `theme` 设为 Sakura Pink；PowerClaude profile 单独再设一次配色
-  - `isPowerClaudeInstalled()` / `findClaudeExe()`：安装检测与 Claude CLI 定位
+- 领域纯变换（`src/domain/windows-terminal-settings.ts`，无 IO）：
+  - `upsertPowerClaudeProfile(config, profile)`：按固定 GUID 去重（忽略大小写）→ 追加 → 设 `defaultProfile` → `tabSwitcherMode: "mru"` → 新标签菜单置顶
+  - `applySakuraPinkTheme(config)`：scheme / theme 按名去重；`profiles.defaults.colorScheme` 与全局 `theme` 设为 Sakura Pink；PowerClaude profile 单独再设配色
+- 基础设施（`src/infrastructure/windows-terminal-store.ts`）：settings.json 定位、读写（4 空格缩进 + 尾换行）、备份（`settings.json.bak-<时间戳>` 同目录副本）
+- 应用编排（`src/application/windows-setup.ts`）：
+  - `detectWindowsClaudeCli()`：经领域探测服务识别 native / npm / path 来源（见 module-claude-installation spec）
+  - `installPowerClaudeCore(installation)`：读配置 → 背景图拷贝到 `~/.claude/`（失败仅警告不阻断）→ profile 工厂（图标复用探测到的可执行路径）→ 纯变换 → 写回
+  - `applyWindowsTerminalTheme()` / `isPowerClaudeInstalled()` / `backupWindowsTerminal()`
 
 ## 输入 / 输出
 
@@ -19,9 +22,10 @@
 
 ## 约束
 
-- 仅支持 Windows；非 Windows 调用路径相关函数直接抛错
+- 仅支持 Windows；非 Windows 调用 store 的路径相关函数直接抛错
 - GUID 比较必须忽略大小写（Windows Terminal 可能写成小写）
 - 不得删除或改写用户已有 profile / scheme / theme
+- 领域层不做 IO；文件读写只经 infrastructure 层
 
 ## 边界条件
 
@@ -31,10 +35,10 @@
 
 ## 验收标准
 
-- [ ] 连续运行两次 `installPowerClaude()`，profiles.list 中只有一个 PowerClaude GUID
-- [ ] 重复 `applyTerminalTheme()` 不产生重复 scheme / theme 条目
-- [ ] 用户已有 profile 在安装前后保持不变
+- [x] 连续运行两次核心安装，profiles.list 中只有一个 PowerClaude GUID
+- [x] 重复主题应用不产生重复 scheme / theme 条目
+- [x] 用户已有 profile 在安装前后保持不变
 
 ## 完成定义
 
-- 真机 Windows Terminal 安装后：新开默认标签即启动 claude，配色 / 标签栏 / 背景生效，备份文件存在
+- `tests/unit/windows-terminal-settings.test.ts` 与 `tests/e2e/` 全绿；真机 Windows Terminal 安装后新开默认标签即启动 claude，配色 / 标签栏 / 背景生效，备份文件存在
