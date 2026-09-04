@@ -93,3 +93,32 @@
 - 为什么不选其他：导入流程无法自动化；GUI 自动化脆弱
 - 后果：硬前提是 Terminal.app 必须先退出（内存旧 profile 会回写覆盖），流程会主动退出并冷启动 Terminal；写入前后需 `killall cfprefsd` 刷新缓存；Swift 冷编译慢（超时 120s）；bookmark 构造失败降级为仅写路径
 - 何时重新审视：Terminal.app 偏好结构再次变化（macOS 大版本更新）时
+
+## ADR-008：Windows Claude CLI 检测改为多安装源分层探测
+
+- 日期：2026-09-05
+- 状态：已采纳
+- 背景（遇到了什么问题）：旧探测只认 npm 全局安装的两个候选路径，PATH 兜底又只匹配无扩展名的 `claude`；官方 irm 原生安装（`~/.local/bin/claude.exe`）两条路都走不通，被误报为「未检测到 Claude Code CLI」
+- 考虑过的方案：
+  - 仅以 `where.exe` 为准：实现最简单，但 claude 存在于已知目录而 PATH 未刷新时漏检
+  - 分层探测 + `claude --version` 探活：更稳但更慢，且对 E2E 桩文件不友好
+- 决策：分层探测——候选路径（native `~/.local/bin` → npm 包内 exe / cmd / ps1 shim）优先，PATHEXT 感知的 PATH 扫描（含无扩展名兜底）殿后；返回结构化结果 `{ executablePath, source }`；探测全程不启动 claude 进程；未检测到时按平台给出两种安装指引（irm / npm，macOS 为 curl / npm）
+- 为什么选这个：漏检率低、无副作用、可纯函数测试；来源标签让「检测到的是什么」可见
+- 为什么不选其他：`where.exe` 覆盖不了 PATH 未刷新场景；探活引入进程副作用与耗时
+- 后果：探测逻辑落在领域层（见 ADR-009）；profile 图标继续复用探测到的可执行路径；新增安装渠道时只需扩候选列表
+- 何时重新审视：官方安装落点变化或出现新的分发渠道（如 winget）时
+
+## ADR-009：以特性切片引入 DDD 分层，测试栈用 node:test + tsx（零新增依赖）
+
+- 日期：2026-09-05
+- 状态：已采纳
+- 背景：仓库此前无测试，探测与环境耦合的逻辑无法单测，本次修复需要防回归；全仓一次性重组的变更面与回归风险偏大
+- 考虑过的方案：全仓重组为 DDD 分层；特性切片优先；仅抽纯函数不建分层
+- 决策：
+  - 以「CLI 探测 + Windows 安装链路」为首个切片建立 domain（纯逻辑）/ application（编排）/ infrastructure（fs / 环境适配）三层；macOS 模块与 claude-settings 暂留原结构，后续切片按需迁移
+  - 测试用 Node 24 内置 node:test + `tsx --test`，零新增依赖
+  - E2E 以子进程跑真实 CLI：沙箱化 USERPROFILE / APPDATA / LOCALAPPDATA，PATH 收窄到只含桩目录——既提供桩 claude，又让 daemon 重启（taskkill）解析失败并被既有 try/catch 吞掉，避免误杀宿主正在运行的 claude.exe；clack confirm 在非 TTY 下以 `y\n` / `n\n` 驱动
+- 为什么选这个：切片风险可控且立即给出分层样板；零依赖符合依赖纪律；E2E 不接触真实配置
+- 为什么不选其他：全仓重组把无法在本机验证的 macOS 链路也拖进变更面；不建分层则探测只是搬家，环境耦合依旧
+- 后果：E2E 断言文件落点而非真实终端效果；真机「打开终端」验收仍需人工；macOS 链路暂无测试覆盖
+- 何时重新审视：macOS 链路需要测试覆盖、引入 CI 或剩余模块迁移分层时

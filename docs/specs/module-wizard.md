@@ -9,7 +9,7 @@
 - 预期行为：
   - 参数：仅支持 `-h/--help`（parseArgs strict=false，其余透传忽略）
   - 平台检测：非 Windows/macOS 仅执行 Claude Code 主题部分并提示；macOS 提示将配置 Terminal.app
-  - 前置检查：未检测到 Claude Code CLI 时给出安装命令并退出（exit 1）
+  - 前置检查：Windows 经分层探测识别 native / npm / path 来源并在成功行展示；未检测到 Claude Code CLI 时按平台给出两种安装方式（Windows：irm / npm；其他平台：curl / npm）并退出（exit 1）
   - 已安装检测：提示「将更新配置」
   - 备份：无条件自动执行（平台各自备份，不询问）
   - 核心安装：失败即报错退出（exit 1）
@@ -33,7 +33,7 @@
 
 ## 验收标准
 
-- [ ] 无 Claude Code CLI 的环境运行：输出安装指引且退出码为 1
+- [x] 无 Claude Code CLI 的环境运行：输出两种安装指引且退出码为 1（E2E 覆盖）
 - [ ] 全新 Windows / macOS 各跑一遍：摘要与实际生效情况一致
 - [ ] 主题确认选 No：不改动任何主题配置，备份与核心安装照常完成
 
