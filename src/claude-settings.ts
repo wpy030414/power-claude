@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, platform } from 'node:os';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
 import { SAKURA_PINK_CLAUDE_THEME } from './theme.js';
@@ -39,8 +39,9 @@ function writeClaudeSettings(settings: ClaudeSettings): void {
   writeFileSync(getClaudeSettingsPath(), JSON.stringify(settings, null, 2) + '\n', 'utf-8');
 }
 
-// ── 重启 Claude Code daemon（Windows） ──
+// ── 重启 Claude Code daemon（仅 Windows，macOS/Linux 无 daemon 进程）──
 function restartClaudeDaemon(): void {
+  if (platform() !== 'win32') return;
   try {
     // 先找正在运行的 daemon 进程
     const out = execSync(
