@@ -1,4 +1,4 @@
-# Spec — macOS Terminal.app 安装器（src/macos-terminal.ts + macos-terminal.swift）
+# Spec — macOS Terminal.app 安装器（src/terminal/macos.ts + macos.swift）
 
 ## 要构建什么
 

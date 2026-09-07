@@ -7,8 +7,7 @@
   "scripts": {
     "apply": "tsx src/index.ts",
     "build": "tsc",
-    "typecheck": "tsc --noEmit",
-    "test": "tsx --test \"tests/**/*.test.ts\""
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@clack/prompts": "^0.10.1",

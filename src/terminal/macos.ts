@@ -3,10 +3,10 @@ import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { getPowerClaudeBackground } from './theme.js';
+import { getPowerClaudeBackground } from '../theme.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SWIFT_SCRIPT = join(__dirname, 'macos-terminal.swift');
+const SWIFT_SCRIPT = join(__dirname, 'macos.swift');
 const PROFILE_NAME = 'powerclaude';
 
 // ── 路径 ──

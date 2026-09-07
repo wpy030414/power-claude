@@ -13,17 +13,17 @@ import {
   backupWindowsTerminal,
   installPowerClaudeCore,
   applyWindowsTerminalTheme,
-} from './application/windows-setup.js';
+} from './terminal/windows.js';
 import {
   installPowerClaudeMacOS,
   backupMacOSTerminal,
   isClaudeInstalledMacOS,
   isPowerClaudeInstalledMacOS,
   findClaudeExeMacOS,
-} from './macos-terminal.js';
+} from './terminal/macos.js';
 import { applyClaudeTheme } from './claude-settings.js';
 import { getPowerClaudeBackground } from './theme.js';
-import type { ClaudeInstallSource } from './domain/claude-installation.js';
+import type { ClaudeInstallSource } from './claude-installation.js';
 
 // ── CLI 参数 ──
 const { values } = parseArgs({
@@ -361,7 +361,7 @@ async function main() {
 
   // ── System Prompt 定制 ──
   const enablePrompt = await confirm({
-    message: '是否启用 System Prompt 定制（移除安全护栏/角色定义，注入 CLAUDE.md + 有价值指令）？',
+    message: '是否启用 System Prompt 定制（移除角色定义/安全护栏，提升 CLAUDE.md 权重）？',
     initialValue: true,
   });
   if (isCancel(enablePrompt)) process.exit(0);

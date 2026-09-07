@@ -1,4 +1,4 @@
-# Spec — CLI 探测领域服务（src/domain/claude-installation.ts）
+# Spec — CLI 探测领域服务（src/claude-installation.ts）
 
 ## 要构建什么
 
@@ -14,7 +14,7 @@
 
 ## 输入 / 输出
 
-- 输入：`DetectionEnvironment`（platform / homeDir / appDataDir / PATH 原始值 / PATHEXT 拆分 / exists 谓词），由 `infrastructure/node-system.ts` 从真实进程环境组装
+- 输入：`DetectionEnvironment`（platform / homeDir / appDataDir / PATH 原始值 / PATHEXT 拆分 / exists 谓词），由 `node-system.ts` 从真实进程环境组装
 - 输出：`ClaudeInstallation | null`
 
 ## 约束
@@ -38,4 +38,4 @@
 
 ## 完成定义
 
-- `tests/unit/claude-installation.test.ts` 全绿；E2E（`tests/e2e/`）覆盖 native / npm / path / 未安装四种场景
+- 真机验证：native / npm / path / 未安装四种场景

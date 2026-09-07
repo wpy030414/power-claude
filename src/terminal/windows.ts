@@ -1,7 +1,7 @@
-// 领域：Windows Terminal settings.json 的纯变换
-// 只操作传入的 settings 对象（原地修改并返回），不做任何文件 IO。
-// 行为与历史实现保持一致：GUID 比较忽略大小写、按名去重、不删用户已有配置。
-import { win32 } from 'node:path';
+// Windows Terminal 配置：定位、读写、变换、编排（单文件，对齐 macos-terminal.ts 的组织方式）
+import { existsSync, readFileSync, writeFileSync, copyFileSync, mkdirSync } from 'node:fs';
+import { homedir, platform } from 'node:os';
+import { join, win32, dirname } from 'node:path';
 import {
   type TerminalScheme,
   type TerminalTheme,
@@ -9,7 +9,11 @@ import {
   SAKURA_PINK_SCHEME,
   SAKURA_PINK_TERMINAL_THEME,
   POWER_CLAUDE_GUID,
+  createPowerClaudeProfile,
+  getPowerClaudeBackground,
 } from '../theme.js';
+import { detectClaudeInstallation, type ClaudeInstallation } from '../claude-installation.js';
+import { currentDetectionEnvironment } from '../node-system.js';
 
 // ── 类型 ──
 export interface TerminalSettings {
@@ -52,6 +56,47 @@ export function resolveWindowsTerminalSettingsPath(
     if (exists(candidate)) return candidate;
   }
   return null;
+}
+
+// ── 文件读写与备份（唯一触碰 settings.json 的地方）──
+
+export function getWindowsTerminalSettingsPath(): string {
+  if (platform() !== 'win32') {
+    throw new Error('Windows Terminal 配置仅支持 Windows');
+  }
+  const localAppData = process.env.LOCALAPPDATA || join(homedir(), 'AppData', 'Local');
+  const resolved = resolveWindowsTerminalSettingsPath(localAppData, existsSync);
+  if (!resolved) {
+    const searched = windowsTerminalSettingsCandidates(localAppData)
+      .map(p => `  - ${p}`)
+      .join('\n');
+    throw new Error(
+      `未找到 Windows Terminal 配置文件。已查找：\n${searched}\n` +
+        '  请先安装 Windows Terminal（稳定版 / Preview / 免安装版均可）；若已安装，请先启动一次让它生成配置。',
+    );
+  }
+  return resolved;
+}
+
+export function readWindowsTerminalSettings(): TerminalSettings {
+  const path = getWindowsTerminalSettingsPath();
+  if (!existsSync(path)) {
+    throw new Error(`未找到 Windows Terminal 配置文件: ${path}\n  请先安装 Windows Terminal。`);
+  }
+  const raw = readFileSync(path, 'utf-8');
+  return JSON.parse(raw) as TerminalSettings;
+}
+
+export function writeWindowsTerminalSettings(config: TerminalSettings): void {
+  writeFileSync(getWindowsTerminalSettingsPath(), JSON.stringify(config, null, 4) + '\n', 'utf-8');
+}
+
+/** 原地复制为 settings.json.bak-<时间戳>，返回备份路径 */
+export function backupWindowsTerminalSettings(): string {
+  const path = getWindowsTerminalSettingsPath();
+  const backup = path.replace('settings.json', `settings.json.bak-${new Date().toISOString().replace(/[:.]/g, '-')}`);
+  copyFileSync(path, backup);
+  return backup;
 }
 
 // ── 安装 PowerClaude profile（原地变换）──
@@ -122,4 +167,59 @@ export function applySakuraPinkTheme(config: TerminalSettings): TerminalSettings
   if (pc) pc.colorScheme = 'Sakura Pink';
 
   return config;
+}
+
+// ── 应用层编排 ──
+
+/** 检测 Claude Code CLI（native / npm / path 三类来源） */
+export function detectWindowsClaudeCli(): ClaudeInstallation | null {
+  return detectClaudeInstallation(currentDetectionEnvironment());
+}
+
+/** 是否已安装 PowerClaude profile（读配置按 GUID 判断，忽略大小写） */
+export function isPowerClaudeInstalled(): boolean {
+  try {
+    const config = readWindowsTerminalSettings();
+    const list = config.profiles.list as Array<Record<string, unknown>>;
+    return list.some(p => {
+      const g = p.guid as string | undefined;
+      return g?.toLowerCase() === POWER_CLAUDE_GUID.toLowerCase();
+    });
+  } catch {
+    return false;
+  }
+}
+
+/** 备份 settings.json（时间戳副本），返回备份路径 */
+export function backupWindowsTerminal(): string {
+  return backupWindowsTerminalSettings();
+}
+
+/** 安装核心配置：背景图缓存 + PowerClaude profile 去重安装 + 默认项/切换器/新标签菜单 */
+export function installPowerClaudeCore(installation: ClaudeInstallation): void {
+  const config = readWindowsTerminalSettings();
+
+  // 背景图：把 public/ 里的图片拷到固定位置，再作为背景写入
+  const bg = getPowerClaudeBackground();
+  if (bg) {
+    try {
+      if (!existsSync(dirname(bg.dest))) mkdirSync(dirname(bg.dest), { recursive: true });
+      copyFileSync(bg.source, bg.dest);
+    } catch (e) {
+      // 图片拷贝失败不应阻断整个安装
+      console.warn(`背景图拷贝失败，已跳过背景: ${String(e)}`);
+    }
+  }
+
+  // profile 图标复用探测到的 claude 可执行文件路径
+  const profile = createPowerClaudeProfile(installation.executablePath, bg ? bg.dest : null);
+  upsertPowerClaudeProfile(config, profile);
+  writeWindowsTerminalSettings(config);
+}
+
+/** 应用 Sakura Pink 终端主题（scheme / theme / 默认配色） */
+export function applyWindowsTerminalTheme(): void {
+  const config = readWindowsTerminalSettings();
+  applySakuraPinkTheme(config);
+  writeWindowsTerminalSettings(config);
 }

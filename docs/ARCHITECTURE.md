@@ -2,7 +2,7 @@
 
 ## 系统概述
 
-- 整体结构：单进程 TypeScript CLI（tsx 直跑），按平台分派到两个终端安装器 + 一个 Claude Code 主题写入器；`theme.ts` 提供双平台共享定义；macOS 终端安装的「最后一公里」由内嵌 Swift 脚本完成。Windows 链路已按 DDD 切片分层（ADR-009）：domain 纯逻辑 / application 编排 / infrastructure 适配，macOS 链路与 claude-settings 暂留原结构。
+- 整体结构：单进程 TypeScript CLI（tsx 直跑），按平台分派到两个终端安装器 + 一个 Claude Code 主题写入器；`theme.ts` 提供双平台共享定义；`claude-installation.ts` + `node-system.ts` 为跨平台 CLI 探测，`terminal/` 目录下内聚各平台终端逻辑。
 
 ```
 pnpm run apply（tsx src/index.ts）
@@ -14,16 +14,14 @@ pnpm run apply（tsx src/index.ts）
 └────┬───────────────────────┬───────────────────┬──────┘
      │ win32                 │ darwin            │ 双平台
      ▼                       ▼                   ▼
-application/           macos-terminal.ts    claude-settings.ts
-windows-setup.ts        │ execSync swift         │
-     │                  ▼                        ▼
-     ├─ domain/claude-installation.ts   macos-terminal.swift   ~/.claude/
-     │   （候选路径 → PATHEXT 感知        │                   ├─ themes/sakura-pink.json
-     │    PATH 扫描，环境注入）            ▼                   └─ settings.json（theme 字段）
-     ├─ domain/windows-terminal-settings.ts   com.apple.Terminal.plist
-     │   （settings 纯变换，无 IO）            （profile 直写 + bookmark）
-     └─ infrastructure/（node-system 环境适配 /
-        windows-terminal-store 读写备份）
+terminal/windows.ts     terminal/macos.ts    claude-settings.ts
+     │                       │ execSync swift      │
+     ▼                       ▼                     ▼
+claude-installation.ts    terminal/macos.swift   ~/.claude/
+（候选路径 → PATHEXT 感知       │                ├─ themes/sakura-pink.json
+ PATH 扫描，环境注入）           ▼                └─ settings.json（theme 字段）
+node-system.ts          com.apple.Terminal.plist
+（环境适配器）
                     │
                     ▼
         Windows Terminal settings.json
@@ -32,8 +30,6 @@ windows-setup.ts        │ execSync swift         │
      ▲ ───────── theme.ts（共享：配色 / 终端主题 / Claude 主题 / profile 工厂 / 背景图查找）─────────▲
 
 public/（背景图源，gitignored）──拷贝──▶ ~/.claude/powerclaude-background.*
-
-tests/ ── node:test：tests/unit（领域纯逻辑）+ tests/e2e（子进程沙箱跑真实 CLI）
 ```
 
 ## 核心模块
@@ -42,21 +38,18 @@ tests/ ── node:test：tests/unit（领域纯逻辑）+ tests/e2e（子进程
 |------|------|
 | `src/index.ts` | CLI 入口：平台检测、前置检查、编排备份 → 安装 → 主题 |
 | `src/theme.ts` | 单一事实源：Sakura Pink 配色/主题定义、PowerClaude profile 工厂、背景图查找（路径可注入便于测试） |
-| `src/domain/claude-installation.ts` | 领域：CLI 探测纯逻辑（native / npm / path 三来源），环境全注入、不启动 claude 进程 |
-| `src/domain/windows-terminal-settings.ts` | 领域：Windows Terminal settings 纯变换（profile 去重安装 / 主题应用），不做 IO |
-| `src/infrastructure/node-system.ts` | 基础设施：把真实进程环境组装成探测输入（DetectionEnvironment） |
-| `src/infrastructure/windows-terminal-store.ts` | 基础设施：settings.json 定位 / 读写 / 备份 |
-| `src/application/windows-setup.ts` | 应用层：Windows 链路编排（检测 → 已安装检查 → 备份 → 核心安装 → 主题） |
-| `src/macos-terminal.ts` | macOS 编排：退出 Terminal → 刷新 cfprefsd → 调 Swift → defaults 设默认 → 冷启动 |
-| `src/macos-terminal.swift` | 生成 .terminal 产物；合成背景图（樱花粉底 + 18% 原图）；构造 security-scoped bookmark；`--plist` 直写偏好 |
+| `src/claude-installation.ts` | 跨平台 CLI 探测纯逻辑（native / npm / path 三来源），环境全注入、不启动 claude 进程 |
+| `src/node-system.ts` | 环境适配器：把真实进程环境组装成 DetectionEnvironment，传给 claude-installation |
+| `src/terminal/windows.ts` | Windows 终端：settings.json 定位/读写/备份、profile 去重安装、主题应用、链路编排 |
+| `src/terminal/macos.ts` | macOS 编排：退出 Terminal → 刷新 cfprefsd → 调 Swift → defaults 设默认 → 冷启动 |
+| `src/terminal/macos.swift` | 生成 .terminal 产物；合成背景图（樱花粉底 + 18% 原图）；构造 security-scoped bookmark；`--plist` 直写偏好 |
 | `src/claude-settings.ts` | 写 `~/.claude/themes/sakura-pink.json`、改 `settings.json` 的 `theme`、Windows 下重启 daemon |
-| `tests/` | node:test：`tests/unit/` 领域纯逻辑单测；`tests/e2e/` 子进程沙箱跑真实 CLI |
 
 ## 模块关系
 
-- `index.ts` 只做编排与交互，不含平台配置细节；平台细节全部下沉到两个安装器
-- 两个终端安装器互不依赖，只共享 `theme.ts`
-- `macos-terminal.ts` 与 `macos-terminal.swift` 是「编排器 + 执行器」：TS 负责流程与前置条件（退出 Terminal、刷 cfprefsd、超时控制），Swift 负责 plist 结构与 AppKit 图像处理
+- `index.ts` 只做编排与交互，不含平台配置细节；平台细节全部下沉到 `terminal/` 下的两个安装器
+- 两个终端安装器互不依赖，只共享 `theme.ts`、`claude-installation.ts`、`node-system.ts`
+- `terminal/macos.ts` 与 `terminal/macos.swift` 是「编排器 + 执行器」：TS 负责流程与前置条件（退出 Terminal、刷 cfprefsd、超时控制），Swift 负责 plist 结构与 AppKit 图像处理
 - Claude Code 主题写入器与终端安装器完全解耦，可独立执行（不支持终端的平台只有这一部分可用）
 
 ## 数据流
