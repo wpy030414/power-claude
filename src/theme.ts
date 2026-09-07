@@ -144,10 +144,16 @@ export function createPowerClaudeProfile(
   iconPath: string | null,
   backgroundImage?: string | null,
 ): PowerClaudeProfile {
+  // 优先使用 PATH 包装脚本（claude.cmd），兜底直接 claude
+  const cmdWrapper = join(homedir(), '.powerclaude', 'claude.cmd');
+  const commandline = existsSync(cmdWrapper)
+    ? `cmd.exe /c "${cmdWrapper}"`
+    : 'powershell.exe -NoLogo -NoExit -Command "claude"';
+
   const profile: PowerClaudeProfile = {
     guid: POWER_CLAUDE_GUID,
     name: 'PowerClaude',
-    commandline: 'powershell.exe -NoLogo -NoExit -Command "claude"',
+    commandline,
     icon: iconPath,
     hidden: false,
     startingDirectory: process.env.USERPROFILE || process.env.HOME || '~',

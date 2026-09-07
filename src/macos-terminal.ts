@@ -132,8 +132,8 @@ export function isTerminalThemeAppliedMacOS(): boolean {
 // Swift 合成背景图 + 构造 bookmark → 直写 Terminal.app 偏好 → 冷启动
 // 全程无需 open 导入、无弹窗。
 
-export function installPowerClaudeMacOS(): void {
-  const claudePath = findClaudeExeMacOS();
+export function installPowerClaudeMacOS(wrapperPath?: string): void {
+  const claudePath = wrapperPath ?? findClaudeExeMacOS();
   if (!claudePath) {
     throw new Error('未找到 Claude Code CLI');
   }
