@@ -35,7 +35,7 @@ PowerClaude —— 跨平台「终端 + Claude Code」樱花粉主题一键配�
 
 ## 目录速查
 
-- `src/index.ts` — 交互式安装向导（CLI 入口，平台分支与交互编排）
+- `src/index.ts` — 交互式安装向导（CLI 入口，四阶段：Init → multiselect 多选 → 统一执行 → 动态汇总）
 - `src/theme.ts` — 主题/配色/profile 定义与背景图查找（双平台共享）
 - `src/claude-installation.ts` — 跨平台 CLI 探测纯逻辑（native / npm / path 三来源）
 - `src/node-system.ts` — 环境适配器：组装 DetectionEnvironment 传入 claude-installation
@@ -43,5 +43,7 @@ PowerClaude —— 跨平台「终端 + Claude Code」樱花粉主题一键配�
 - `src/macos-terminal.ts` — macOS 安装编排（退出 Terminal → 刷新 cfprefsd → 调 Swift → 冷启动）
 - `src/macos-terminal.swift` — Swift 脚本：生成 .terminal 产物、合成背景图、构造 bookmark、直写偏好 plist
 - `src/claude-settings.ts` — Claude Code 主题写入与检测
+- `src/patch-agents-md.ts` — 二进制补丁：CLAUDE.md → AGENTS.md 5 组等长替换 + claude 进程检测/强杀 + 实体二进制定位
+- `scripts/e2e-multiselect.ts` — E2E 聚焦测试（patch 模块单测 + terminal-theme 执行链）
 - `public/` — 本机背景图素材目录（gitignored）
 - `docs/` — 项目文档（PRD / ARCHITECTURE / DECISIONS / specs）

@@ -8,9 +8,12 @@
 pnpm run apply（tsx src/index.ts）
         │
         ▼
-┌───────────────── index.ts 交互式向导 ─────────────────┐
-│ 平台检测 → Claude CLI 探测 → 自动备份 → 核心安装      │
-│         → 确认主题 → 终端主题 + Claude Code 主题      │
+┌───────────────── index.ts 交互式向导（四阶段）──────────┐
+│ Phase 1 Init：平台检测 → CLI 探测 → 备份 → 核心安装     │
+│ Phase 2 Select：multiselect 一步多选 4 项功能           │
+│ Phase 3 Execute：按依赖链统一执行（终端主题 → Claude     │
+│   主题 → System Prompt → AGENTS.md 补丁）               │
+│ Phase 4 Summary：按选中项动态汇总                        │
 └────┬───────────────────────┬───────────────────┬──────┘
      │ win32                 │ darwin            │ 双平台
      ▼                       ▼                   ▼
@@ -29,6 +32,9 @@ node-system.ts          com.apple.Terminal.plist
 
      ▲ ───────── theme.ts（共享：配色 / 终端主题 / Claude 主题 / profile 工厂 / 背景图查找）─────────▲
 
+patch-agents-md.ts（独立：定位 claude 实体二进制 → 5 组等长替换
+  CLAUDE.md→AGENTS.md 系字符串 → 写回；进程占用时引导用户确认关闭）
+
 public/（背景图源，gitignored）──拷贝──▶ ~/.claude/powerclaude-background.*
 ```
 
@@ -36,10 +42,11 @@ public/（背景图源，gitignored）──拷贝──▶ ~/.claude/powerclaud
 
 | 模块 | 职责 |
 |------|------|
-| `src/index.ts` | CLI 入口：平台检测、前置检查、编排备份 → 安装 → 主题 |
+| `src/index.ts` | CLI 入口：四阶段编排（Init → Select → Execute → Summary），多选菜单 + 固定依赖链执行 |
 | `src/theme.ts` | 单一事实源：Sakura Pink 配色/主题定义、PowerClaude profile 工厂、背景图查找（路径可注入便于测试） |
 | `src/claude-installation.ts` | 跨平台 CLI 探测纯逻辑（native / npm / path 三来源），环境全注入、不启动 claude 进程 |
 | `src/node-system.ts` | 环境适配器：把真实进程环境组装成 DetectionEnvironment，传给 claude-installation |
+| `src/patch-agents-md.ts` | 二进制补丁：定位 claude 实体二进制（体积阈值过滤 shim）、5 组等长替换 CLAUDE.md→AGENTS.md、进程检测/强杀 |
 | `src/terminal/windows.ts` | Windows 终端：settings.json 定位/读写/备份、profile 去重安装、主题应用、链路编排 |
 | `src/terminal/macos.ts` | macOS 编排：退出 Terminal → 刷新 cfprefsd → 调 Swift → defaults 设默认 → 冷启动 |
 | `src/terminal/macos.swift` | 生成 .terminal 产物；合成背景图（樱花粉底 + 18% 原图）；构造 security-scoped bookmark；`--plist` 直写偏好 |
@@ -57,6 +64,8 @@ public/（背景图源，gitignored）──拷贝──▶ ~/.claude/powerclaud
 - 主题定义流：`theme.ts` 常量 → Windows 写入 settings.json（scheme + themes + defaults）；macOS 由 Swift 编码进 profile；Claude 侧写 `themes/sakura-pink.json` + `theme: "custom:sakura-pink"`
 - 背景图流：`public/` 第一张图（按文件名序）→ 拷贝到 `~/.claude/powerclaude-background.<ext>` → Windows 直接作为 `backgroundImage`；macOS 由 Swift 合成为 `powerclaude-background-blended.png` 并构造 bookmark 指向
 - 备份流：Windows `settings.json.bak-<时间戳>` 同目录副本；macOS `defaults export` 到 `~/com.apple.Terminal.bak-<时间戳>.plist`
+- 补丁流：`patch-agents-md.ts` 候选路径探测（npm 实体 → 原生落点，≥10MB 过滤 shim）→ 整文件读入 Buffer → 5 组等长字节替换（最长优先防前缀误匹配）→ 写回原路径；0 命中时不写文件（幂等）
+- 执行流：Phase 3 固定顺序「终端主题 → Claude 主题 → System Prompt → AGENTS.md 补丁」——Claude 主题步骤内含 daemon 重启（杀 claude 进程），补丁放最后可直接获得独占写权限
 
 ## 外部系统
 
